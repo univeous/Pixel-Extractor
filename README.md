@@ -20,7 +20,7 @@ A web-based tool to extract pixel art sprites from AI-generated or upscaled imag
 
 - **Polished UI** - Clean, modern dark theme with intuitive controls and real-time parameter adjustment
 - **PWA support** - Install it as an app, works offline after first load — almost like a native app! Check out the screenshots above ;)
-- **Processing history** - All your extractions are saved locally (IndexedDB) and persist across sessions
+- **Processing history** - All your extractions are saved locally in IndexedDB and persist across sessions (note: clearing browser data will erase history)
 - **Multi-language** - English / 中文 / 日本語
 
 ## Tech Stack
