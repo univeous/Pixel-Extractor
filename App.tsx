@@ -31,9 +31,11 @@ function optionsEqual(a: ProcessOptions, b: ProcessOptions): boolean {
     a.edge_detection_quantization_method === b.edge_detection_quantization_method;
 }
 
-// GitHub button with star count
+// GitHub button with star count and version and version
 const GitHubButton: React.FC = () => {
   const [stars, setStars] = useState<number | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
   
   useEffect(() => {
     // Fetch star count from GitHub API
@@ -48,20 +50,48 @@ const GitHubButton: React.FC = () => {
   }, []);
   
   return (
-    <a
-      href="https://github.com/univeous/Pixel-Extractor"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-1.5 p-2 rounded-lg text-sm text-gray-400 hover:text-gray-300 hover:bg-[#3e3e42] transition-colors"
+    <div 
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
     >
-      <Icons.GitHub />
-      {stars !== null && (
-        <>
-          <span className="text-yellow-400">★</span>
-          <span>{stars}</span>
-        </>
+      <a
+        href="https://github.com/univeous/Pixel-Extractor"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 p-2 rounded-lg text-sm text-gray-400 hover:text-gray-300 hover:bg-[#3e3e42] transition-colors"
+      >
+        <Icons.GitHub />
+        {stars !== null && (
+          <>
+            <span className="text-yellow-400">★</span>
+            <span>{stars}</span>
+          </>
+        )}
+        <span className="text-gray-500 font-mono text-sm leading-none">v{version}</span>
+      </a>
+      
+      {showTooltip && (
+        <div className="absolute right-0 top-full mt-2 bg-[#2d2d30] border border-[#3e3e42] rounded-lg shadow-xl p-3 z-50 min-w-[200px] text-xs">
+          <div className="text-gray-300 mb-1">
+            <span className="text-gray-500">Version:</span> {version}
+          </div>
+          {version !== 'dev' && (
+            <div className="text-gray-500 text-[10px] border-t border-[#3e3e42] pt-2 mt-2">
+              <a 
+                href={`https://github.com/univeous/Pixel-Extractor/commit/${version}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View commit on GitHub →
+              </a>
+            </div>
+          )}
+        </div>
       )}
-    </a>
+    </div>
   );
 };
 
@@ -427,14 +457,9 @@ const App: React.FC = () => {
 
       {/* Header */}
       <header className="h-14 bg-[#252526] border-b border-[#3e3e42] flex items-center px-4 shrink-0">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2 mr-4">
+          <img src="./icon.svg" alt="" className="w-5 h-5" />
           <h1 className="text-xl font-bold text-white">{t('appTitle')}</h1>
-          <span 
-            className="text-[10px] text-gray-500 font-mono"
-            title={`Version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}`}
-          >
-            {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}
-          </span>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className={`w-2 h-2 rounded-full ${status === 'ready' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]' : status === 'processing' ? 'bg-yellow-400 animate-pulse' : 'bg-red-500'}`}></span>
@@ -447,7 +472,7 @@ const App: React.FC = () => {
         {/* Network Status */}
         <NetworkStatus t={t} />
         
-        {/* GitHub Button */}
+        {/* GitHub Button (with version) */}
         <GitHubButton />
         
         {/* Language Switcher */}
