@@ -4,26 +4,27 @@ import { SpriteCanvas } from './SpriteCanvas';
 
 export const BeforeAfterSlider: React.FC<{
   originalSrc: string | null;
-  originalWidth: number;
-  originalHeight: number;
-  cropX: number;
-  cropY: number;
-  cropWidth: number;
-  cropHeight: number;
-  spriteData: number[][][];
+  spriteData: Uint8Array;
   spriteWidth: number;
   spriteHeight: number;
   spriteContentX?: number;
   spriteContentY?: number;
-  spriteContentW?: number;
-  spriteContentH?: number;
+  gridSizeX: number;
+  gridSizeY: number;
+  gridOriginX: number;
+  gridOriginY: number;
+  gridSpanW: number;
+  gridSpanH: number;
   zoom: number;
+  stretchOriginal?: boolean;
 }> = ({ 
-    originalSrc, originalWidth, originalHeight,
-    cropX, cropY, cropWidth, cropHeight, 
+    originalSrc,
     spriteData, spriteWidth, spriteHeight,
-    spriteContentX, spriteContentY, spriteContentW, spriteContentH,
-    zoom 
+    spriteContentX, spriteContentY,
+    gridSizeX, gridSizeY,
+    gridOriginX, gridOriginY, gridSpanW, gridSpanH,
+    zoom,
+    stretchOriginal = true
 }) => {
   const [sliderPos, setSliderPos] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,30 +40,50 @@ export const BeforeAfterSlider: React.FC<{
     img.src = originalSrc;
   }, [originalSrc]);
 
-  // Draw the specific crop to the canvas whenever parameters change
+  // Draw the original image region that corresponds to the sprite
   useEffect(() => {
     const canvas = originalCanvasRef.current;
     if (!canvas || !originalImageObj) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Ensure canvas internal resolution matches the crop size
-    // This is important for pixel-perfect rendering when scaled up by CSS
-    if (canvas.width !== cropWidth || canvas.height !== cropHeight) {
-        canvas.width = cropWidth;
-        canvas.height = cropHeight;
+    const contentOffsetX = (spriteContentX ?? 0) * gridSizeX;
+    const contentOffsetY = (spriteContentY ?? 0) * gridSizeY;
+    
+    // Source position in original image
+    const srcX = gridOriginX - contentOffsetX;
+    const srcY = gridOriginY - contentOffsetY;
+    
+    // Source size depends on stretch mode
+    let srcW: number, srcH: number;
+    if (stretchOriginal) {
+      // Use actual grid span - will be stretched to fit container
+      srcW = gridSpanW + contentOffsetX;
+      srcH = gridSpanH + contentOffsetY;
+    } else {
+      // Use theoretical sprite coverage - might not perfectly align
+      srcW = spriteWidth * gridSizeX;
+      srcH = spriteHeight * gridSizeY;
     }
     
-    // Disable smoothing for pixel art look in the draw step if browser supports it here (though CSS usually handles it)
-    ctx.imageSmoothingEnabled = false;
+    // Canvas size matches the source size (1:1), CSS will scale it
+    const canvasW = Math.ceil(srcW);
+    const canvasH = Math.ceil(srcH);
     
+    if (canvas.width !== canvasW || canvas.height !== canvasH) {
+        canvas.width = canvasW;
+        canvas.height = canvasH;
+    }
+    
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
     ctx.drawImage(
         originalImageObj,
-        cropX, cropY, cropWidth, cropHeight, // Source Rect
-        0, 0, cropWidth, cropHeight          // Dest Rect (Matches canvas size)
+        srcX, srcY, srcW, srcH,
+        0, 0, canvasW, canvasH
     );
-  }, [originalImageObj, cropX, cropY, cropWidth, cropHeight]);
+  }, [originalImageObj, gridOriginX, gridOriginY, gridSpanW, gridSpanH, spriteWidth, spriteHeight, gridSizeX, gridSizeY, spriteContentX, spriteContentY, stretchOriginal]);
 
   const calculatePos = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -118,20 +139,17 @@ export const BeforeAfterSlider: React.FC<{
     };
   }, [calculatePos]);
 
-  // Determine scaling to match Original Crop to Sprite Content
-  const sCX = spriteContentX ?? 0;
-  const sCY = spriteContentY ?? 0;
-  // If content width is 0 or undefined, fall back to sprite width to avoid infinity
-  const sCW = spriteContentW || spriteWidth;
-  const sCH = spriteContentH || spriteHeight;
+  // Each sprite pixel represents gridSizeX × gridSizeY original pixels
+  const spriteCoversW = spriteWidth * gridSizeX;
+  const spriteCoversH = spriteHeight * gridSizeY;
 
-  // The container is sized to match the crop at the given zoom level
-  const widthPx = cropWidth * zoom;
-  const heightPx = cropHeight * zoom;
+  // The container is sized to fit the full sprite
+  const widthPx = spriteCoversW * zoom;
+  const heightPx = spriteCoversH * zoom;
 
-  // Calculate scale required for the sprite so that its content matches the crop size
-  const scaleX = widthPx / sCW;
-  const scaleY = heightPx / sCH;
+  // Scale for rendering sprite
+  const scaleX = gridSizeX * zoom;
+  const scaleY = gridSizeY * zoom;
 
   const bgStyle = {
       backgroundImage: `
@@ -157,9 +175,7 @@ export const BeforeAfterSlider: React.FC<{
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
              <canvas 
                  ref={originalCanvasRef}
-                 width={cropWidth}
-                 height={cropHeight}
-                 className="absolute inset-0 w-full h-full object-contain pointer-events-none image-pixelated"
+                 className="absolute inset-0 w-full h-full pointer-events-none"
                  style={{
                      imageRendering: 'pixelated'
                  }}
@@ -179,9 +195,7 @@ export const BeforeAfterSlider: React.FC<{
                          height={spriteHeight} 
                          style={{ 
                              width: spriteWidth * scaleX, 
-                             height: spriteHeight * scaleY,
-                             transform: `translate(${-sCX * scaleX}px, ${-sCY * scaleY}px)`,
-                             transformOrigin: '0 0'
+                             height: spriteHeight * scaleY
                          }}
                          className="pointer-events-none" 
                      />

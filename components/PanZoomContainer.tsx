@@ -69,7 +69,7 @@ export const PanZoomContainer: React.FC<{
                 {children}
             </div>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 pointer-events-none bg-black/30 px-2 py-1 rounded whitespace-nowrap z-20">
-                Middle/Right Click + Drag to Pan | Wheel to Zoom
+                Middle Mouse Button + Drag to Pan | Wheel to Zoom
             </div>
         </div>
     );

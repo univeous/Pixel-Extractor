@@ -1,20 +1,37 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Pixel Extractor
 
-# Run and deploy your AI Studio app
+Extract pixel art sprites from images using Python (Pyodide/WASM).
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1w4Agbxs315ZXLzFgBEcRTLGxPB6hQE_M
+- Automatic sprite detection and extraction
+- Color quantization (Histogram / K-Means)
+- Grid size detection
+- Background color removal
+- Before/after comparison view
+- PWA support (installable, works offline after first load)
+- Multi-language support (EN / 中文 / 日本語)
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js (npm, yarn, pnpm, bun, etc.)
 
+```bash
+# Install dependencies
+npm install
+# or: yarn / pnpm install / bun install
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+# Run dev server
+npm run dev
+# or: yarn dev / pnpm dev / bun dev
+```
+
+Open http://localhost:3000
+
+## Build
+
+```bash
+npm run build
+```
+
+Output will be in `dist/` folder.

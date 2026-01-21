@@ -1,24 +1,23 @@
 
 import React, { useMemo } from 'react';
 
-export const PaletteDisplay: React.FC<{ data: number[][][] }> = ({ data }) => {
+export const PaletteDisplay: React.FC<{ data: Uint8Array; width: number; height: number }> = ({ data, width, height }) => {
   const uniqueColors = useMemo(() => {
-    if (!data || !Array.isArray(data)) return [];
+    if (!data || data.length === 0) return [];
     const colors = new Set<string>();
     try {
-        data.forEach(row => {
-          if(!Array.isArray(row)) return;
-          row.forEach(pixel => {
-            if(!Array.isArray(pixel) || pixel.length < 4) return;
-            if (pixel[3] > 10) { // Ignore transparent
-               const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('');
-               colors.add(hex);
-            }
-          });
-        });
+        const pixelCount = width * height;
+        for (let i = 0; i < pixelCount; i++) {
+          const idx = i * 4;
+          const a = data[idx + 3];
+          if (a > 10) { // Ignore transparent
+             const hex = '#' + [data[idx], data[idx + 1], data[idx + 2]].map(x => x.toString(16).padStart(2, '0')).join('');
+             colors.add(hex);
+          }
+        }
     } catch(e) { console.error("Palette extract error", e); return []; }
     return Array.from(colors).sort();
-  }, [data]);
+  }, [data, width, height]);
 
   return (
     <div className="flex flex-wrap gap-1">

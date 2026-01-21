@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      publicDir: 'public',
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -17,6 +18,14 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+        }
+      },
+      build: {
+        // 确保 worker.js 被复制
+        rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+          }
         }
       }
     };

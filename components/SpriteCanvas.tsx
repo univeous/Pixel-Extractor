@@ -2,7 +2,7 @@
 import React, { useRef, useEffect } from 'react';
 
 export const SpriteCanvas: React.FC<{ 
-  data: number[][][]; 
+  data: Uint8Array; 
   width: number; 
   height: number; 
   style?: React.CSSProperties; 
@@ -19,10 +19,9 @@ export const SpriteCanvas: React.FC<{
       if (!ctx) return;
 
       const imgData = ctx.createImageData(width, height);
-      const flatData = data.flat(2);
-      if (flatData.length !== width * height * 4) return;
+      if (data.length !== width * height * 4) return;
       
-      imgData.data.set(flatData);
+      imgData.data.set(data);
       ctx.putImageData(imgData, 0, 0);
     } catch (e) {
       console.error("Error rendering sprite:", e);

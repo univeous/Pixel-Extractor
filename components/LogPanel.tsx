@@ -22,9 +22,9 @@ export const LogPanel: React.FC<{ logs: string[], status: WorkerStatus }> = ({ l
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : (status === 'init' ? "Initializing system..." : "Ready to process.");
 
   return (
-    <div className={`bg-[#252526] border-t border-[#3e3e42] flex flex-col transition-all duration-300 ${expanded ? 'h-48' : 'h-8'}`}>
+    <div className="bg-[#252526] border-t border-[#3e3e42] flex flex-col shrink-0" style={{ height: expanded ? '12rem' : '2rem', transition: 'height 0.3s ease' }}>
        <div 
-         className="h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-[#2d2d30] select-none"
+         className="h-8 min-h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-[#2d2d30] select-none shrink-0"
          onClick={() => setExpanded(!expanded)}
        >
           <div className="flex items-center gap-2 text-[11px] font-mono text-gray-400 truncate flex-1">

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#252526"/>
+  <g fill="#3b82f6">
+    <!-- Pixel grid pattern -->
+    <rect x="128" y="128" width="64" height="64"/>
+    <rect x="256" y="128" width="64" height="64"/>
+    <rect x="192" y="192" width="64" height="64"/>
+    <rect x="320" y="192" width="64" height="64"/>
+    <rect x="128" y="256" width="64" height="64"/>
+    <rect x="256" y="256" width="64" height="64"/>
+    <rect x="192" y="320" width="64" height="64"/>
+    <rect x="320" y="320" width="64" height="64"/>
+  </g>
+  <g fill="#60a5fa">
+    <rect x="192" y="128" width="64" height="64"/>
+    <rect x="128" y="192" width="64" height="64"/>
+    <rect x="256" y="192" width="64" height="64"/>
+    <rect x="192" y="256" width="64" height="64"/>
+    <rect x="320" y="256" width="64" height="64"/>
+    <rect x="128" y="320" width="64" height="64"/>
+    <rect x="256" y="320" width="64" height="64"/>
+  </g>
+</svg>

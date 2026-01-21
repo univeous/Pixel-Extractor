@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PixelArt Extractor - React Edition</title>
+    <meta name="theme-color" content="#252526">
+    <meta name="description" content="Extract pixel art sprites from images">
+    <title>Pixel Extractor</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for dark theme */
@@ -36,10 +41,23 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-[#1e1e1e] text-[#d4d4d4] overflow-hidden">
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
+<script>
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log('[PWA] Service Worker registered:', reg.scope);
+        })
+        .catch(err => {
+          console.warn('[PWA] Service Worker registration failed:', err);
+        });
+    });
+  }
+</script>
 </body>
 </html>

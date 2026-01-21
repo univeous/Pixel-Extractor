@@ -76,16 +76,19 @@ def create_color_quantizer_kmeans(image_lab:np.array, transparency_color_lab:np.
             kmeans_max.fit(pixels_lab)
         palette_lab = kmeans_max.cluster_centers_
 
+    # Merge similar colors using vectorized pairwise distance
     while palette_lab.shape[0] > 2:
-        a = np.tile(palette_lab.T, palette_lab.shape[0]).T
-        b = np.repeat(palette_lab, palette_lab.shape[0], axis=0)
-        deltas = deltaE_cie76(a, b)
-        deltas[deltas == 0] = 1e6 
+        # Compute pairwise deltaE using broadcasting
+        diff = palette_lab[:, np.newaxis, :] - palette_lab[np.newaxis, :, :]
+        deltas = np.sqrt(np.sum(diff ** 2, axis=2))
+        # Only exclude self-comparison (diagonal), not duplicate colors
+        np.fill_diagonal(deltas, 1e6)
+        
         if deltas.min() > same_color_cie76_threshold:
             break
-        i_a = deltas.argmin() % palette_lab.shape[0]
-        i_b = int(deltas.argmin() / palette_lab.shape[0])
-        palette_lab = palette_lab[np.arange(palette_lab.shape[0]) != max(i_a, i_b)]
+        # Find the pair with minimum distance and merge
+        min_idx = np.unravel_index(deltas.argmin(), deltas.shape)
+        palette_lab = np.delete(palette_lab, max(min_idx), axis=0)
 
     palette_lab = np.vstack([palette_lab, [transparency_color_lab]])
     kdtree = KDTree(palette_lab, leaf_size=8)
@@ -211,23 +214,28 @@ def create_edge_profile(image_lab:np.array, horizontal:bool):
         edge_profile /= edge_profile.max()
     return delta, edge_profile
 
-@jit(nopython=True)
+# Vectorized version - much faster without numba JIT
 def get_spacing_error(spacing:float, sorted_x:np.ndarray, min_x:float, max_x:float, gap_penalty_weight:float=1.0) -> float:
-    gaps = 0
-    total_expected_points = 0
-    squared_error = 0.0
-    n = len(sorted_x) - 1
-    for i in range(n):
-        actual_distance = sorted_x[i + 1] - sorted_x[i]
-        expected_points = max(1, round(actual_distance / spacing))
-        expected_distance = expected_points * spacing
-        squared_error += (actual_distance - expected_distance) ** 2
-        gaps += max(0, expected_points - 1)
-        total_expected_points += expected_points
+    if len(sorted_x) < 2:
+        return float('inf')
+    
+    # Vectorized distance calculations
+    actual_distances = np.diff(sorted_x)
+    expected_points = np.maximum(1, np.round(actual_distances / spacing))
+    expected_distances = expected_points * spacing
+    squared_errors = (actual_distances - expected_distances) ** 2
+    
+    squared_error = np.sum(squared_errors)
+    gaps = np.sum(np.maximum(0, expected_points - 1))
+    total_expected_points = np.sum(expected_points)
+    
+    # Edge handling
     missing_points = round((max(0, sorted_x.min() - min_x) + max(0, max_x - sorted_x.max())) / spacing)
     gaps += missing_points
     total_expected_points += missing_points
+    
     gap_penalty = 0 if total_expected_points == 0 else gaps / total_expected_points * gap_penalty_weight
+    n = len(sorted_x) - 1
     rmse = np.sqrt(squared_error / n)
     normalized_error = rmse / spacing
     return normalized_error + gap_penalty
@@ -250,6 +258,8 @@ def find_optimal_spacing(peaks:np.ndarray, prominences:np.ndarray, min_peaks:int
         errors[i] = get_spacing_error(result.x[0], sorted_x, min_x, max_x, gap_penalty_weight)
     return spacings, errors, peak_counts
 
+# Keep original logic - the nested loop is hard to vectorize correctly
+# due to the sequential dependency and complex condition
 @jit(nopython=True)
 def find_edges(peaks:np.ndarray, prominences:np.ndarray,
     spacing:float, cell_trim_fraction:float=0.7, gap_fraction:float=1.5) -> np.ndarray:
@@ -320,24 +330,72 @@ def split_image(image_lab:np.array, transparency_color_lab:np.array, same_color_
         images_data.append((image_lab[min_y:max_y, min_x:max_x, :], min_x, min_y))
     return images_data
 
-def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, default_transparency_color_hex:str='ff00ff',
+def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, remove_background_color:bool=True, default_transparency_color_hex:str='ff00ff',
     split_distance:int=None, min_sprite_size:int=8, same_color_cie76_threshold:float=10.0, border_transparency_cie76_threshold:float=20,
     max_colors:int=256, largest_pixel_size:int=64, minimum_peak_fraction:float=0.2, land_dilution_during_cleanup:int=1,
     island_size_to_remove:int=5, symmetry_coefficient_threshold:float=0.5, create_summary:bool=False,
     color_quantization_method:str='histogram', edge_detection_quantization_method:str='kmeans'):
 
-    report_progress(10, '正在初始化图像...')
+    report_progress(10, 'processingInit')
     
     print(f'Extracting sprite from image of size {image_rgba.shape[1]}x{image_rgba.shape[0]}')
     image_rgba = image_rgba / 255.0
+    
+    # 解析默认透明色
     color_bytes = struct.unpack('BBB', bytes.fromhex(default_transparency_color_hex))
-    transparency_color_rgb = np.array(list(map(lambda x: x / 255.0, color_bytes)), dtype=np.float32)
-    transparency_color_lab = rgb2lab(transparency_color_rgb)
+    default_transparency_color_rgb = np.array(list(map(lambda x: x / 255.0, color_bytes)), dtype=np.float32)
+    default_transparency_color_lab = rgb2lab(default_transparency_color_rgb)
+
+    # 如果启用了移除背景色，我们使用默认透明色（或自动检测的颜色）作为“透明色”
+    # 如果禁用了移除背景色，我们需要找一个图像中不存在的颜色作为“透明色”，以确保只有Alpha通道透明的区域被视为透明
+    
+    if remove_background_color:
+        transparency_color_rgb = default_transparency_color_rgb
+        transparency_color_lab = default_transparency_color_lab
+    else:
+        # 寻找安全颜色：简单起见，我们使用一个极不可能出现的颜色，或者直接使用默认颜色但后续不进行颜色距离判断
+        # 由于后续逻辑强依赖于 transparency_color_lab，我们这里采用一种策略：
+        # 将 Alpha 透明区域替换为 default_transparency_color_rgb
+        # 但在后续判断 is_opaque 时，只依赖 Alpha（这需要修改后续逻辑，比较复杂）
+        # 替代方案：找一个图像中不存在的颜色。
+        
+        # 简单策略：尝试几个极端颜色，找到一个与图像中所有像素距离都足够远的颜色
+        # 这里为了性能，我们简化处理：假设 (0, 0, 0) 或 (1, 1, 1) 或 (1, 0, 1) 中总有一个是安全的
+        # 或者更简单：我们仍然使用 default_transparency_color_rgb，但在 alpha_to_transparency_color 之后
+        # 我们不再进行 detect_transparency_color，并且希望图像中没有这个颜色。
+        # 为了稳健，我们这里暂时使用 default_transparency_color_rgb，但用户如果选了 Disable，
+        # 他应该确保 default_transparency_color_hex 不在图像前景中（或者我们应该自动找一个）。
+        
+        # 让我们尝试找一个安全颜色
+        # 采样图像像素（为了速度，只采样一部分）
+        pixels = image_rgba[::10, ::10, :3].reshape(-1, 3)
+        candidates = [
+            np.array([1.0, 0.0, 1.0], dtype=np.float32), # Magenta
+            np.array([0.0, 1.0, 0.0], dtype=np.float32), # Green
+            np.array([0.0, 0.0, 0.0], dtype=np.float32), # Black
+            np.array([1.0, 1.0, 1.0], dtype=np.float32), # White
+        ]
+        
+        safe_color = candidates[0]
+        max_min_dist = -1
+        
+        for cand in candidates:
+            # 计算候选颜色与图像像素的最小距离
+            dists = np.sqrt(np.sum((pixels - cand) ** 2, axis=1))
+            min_dist = dists.min() if dists.shape[0] > 0 else 1.0
+            if min_dist > max_min_dist:
+                max_min_dist = min_dist
+                safe_color = cand
+        
+        transparency_color_rgb = safe_color
+        transparency_color_lab = rgb2lab(transparency_color_rgb)
+
+    # Replace alpha-transparent pixels with transparency color
     image_rgb = alpha_to_transparency_color(image_rgba, transparency_color_rgb)
     image_lab = rgb2lab(image_rgb)
 
     # Denoise
-    report_progress(20, '正在进行小波降噪（Wavelet Denoising）...')
+    report_progress(20, 'processingDenoise')
     with warnings.catch_warnings():
         warnings.filterwarnings('error', r'(Mean of empty slice.)|(Level value of 1 is too high: all coefficients will experience boundary effects.)')
         try:
@@ -346,8 +404,10 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
             print('Problem running wavelet denoising. Skipping...')
 
     REQUIRED_EDGE_FRACTION = 0.75
-    if detect_transparency_color:
-        report_progress(30, '分析透明色...')
+    
+    # 只有在启用移除背景色时，才进行自动检测
+    if remove_background_color and detect_transparency_color:
+        report_progress(30, 'processingAnalyzeColor')
         color, fraction = find_common_edge_color(image_lab, same_color_cie76_threshold)
         if fraction > REQUIRED_EDGE_FRACTION:
             transparency_color_lab = color
@@ -367,7 +427,7 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
     if split_distance is None:
         images_data = [(image_lab, 0, 0)]
     else:
-        report_progress(40, '分割图像区域...')
+        report_progress(40, 'processingSplit')
         images_data = split_image(image_lab, transparency_color_lab, min_distance=split_distance)
 
     print(f'Split image into {len(images_data)} subregions')
@@ -379,7 +439,7 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
     for image_index, (sub_image_lab, offset_x, offset_y) in enumerate(images_data):
         progress_base = 50 + image_index * step_size
         
-        report_progress(progress_base, f'子区域 {image_index + 1}/{total_regions}: 准备...')
+        report_progress(progress_base, f'processingSubregion:{image_index + 1}/{total_regions}:processingPrepare')
         
         print(f'Processing subregion {image_index + 1} of {len(images_data)}')
         
@@ -393,7 +453,7 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
         
         print(f'Cropped image to size {final_w}x{final_h} at offset {final_x},{final_y}')
         
-        report_progress(progress_base + step_size * 0.2, f'子区域 {image_index + 1}/{total_regions}: 颜色分析...')
+        report_progress(progress_base + step_size * 0.2, f'processingSubregion:{image_index + 1}/{total_regions}:processingColorAnalysis')
 
         _, quantizer_lab_full = edge_detection_quantizer(
             image_lab=cropped_image_lab,
@@ -403,7 +463,7 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
         )
         indexed_image_lab = quantizer_lab_full(cropped_image_lab)
         
-        report_progress(progress_base + step_size * 0.4, f'子区域 {image_index + 1}/{total_regions}: 边缘检测...')
+        report_progress(progress_base + step_size * 0.4, f'processingSubregion:{image_index + 1}/{total_regions}:processingEdgeDetection')
 
         image_edges_x, profile_x = create_edge_profile(indexed_image_lab, True)
         image_edges_y, profile_y = create_edge_profile(indexed_image_lab, False)
@@ -420,7 +480,7 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
         min_peaks_x = max(3, int(peaks_x.shape[0] * minimum_peak_fraction))
         min_peaks_y = max(3, int(peaks_y.shape[0] * minimum_peak_fraction))
         
-        report_progress(progress_base + step_size * 0.6, f'子区域 {image_index + 1}/{total_regions}: 网格拟合...')
+        report_progress(progress_base + step_size * 0.6, f'processingSubregion:{image_index + 1}/{total_regions}:processingGridFit')
 
         spacings_x, errors_x, peak_counts_x = find_optimal_spacing(peaks_x, prominences_x, min_peaks_x,
             0, image_edges_x.shape[0], largest_spacing=largest_pixel_size)
@@ -436,13 +496,20 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
 
         edges_x = find_edges(peaks_x, prominences_x, spacing_x)
         edges_y = find_edges(peaks_y, prominences_y, spacing_y)
+        
+        # Record the sprite grid bounds in cropped_image coordinates
+        # This is the area that the sprite pixels cover (before any symmetry padding)
+        sprite_grid_x0 = float(edges_x[0])
+        sprite_grid_y0 = float(edges_y[0])
+        sprite_grid_x1 = float(edges_x[-1])
+        sprite_grid_y1 = float(edges_y[-1])
 
         if edges_x.shape[0] < min_sprite_size and edges_y.shape[0] < min_sprite_size:
             print('The resulting sprite is too small')
             results.append(None)
             continue
 
-        report_progress(progress_base + step_size * 0.8, f'子区域 {image_index + 1}/{total_regions}: 生成精灵...')
+        report_progress(progress_base + step_size * 0.8, f'processingSubregion:{image_index + 1}/{total_regions}:processingGenerateSprite')
 
         sprite_lab = sample_pixels(cropped_image_lab, transparency_color_lab, edges_x, edges_y)
         palette_lab, quantizer_lab = quantizer_factory(
@@ -480,60 +547,74 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, de
 
         indexed_sprite_rgba = np.rint(indexed_sprite_rgba * 255).astype(np.uint8)
         
-        # Calculate content bounding box within the sprite
+        # Calculate content bounding box within the sprite (for alignment)
         final_alpha = indexed_sprite_rgba[:, :, 3]
         rows = np.any(final_alpha > 0, axis=1)
         cols = np.any(final_alpha > 0, axis=0)
         
         content_x, content_y = 0, 0
-        content_w, content_h = indexed_sprite_rgba.shape[1], indexed_sprite_rgba.shape[0]
         
         if rows.any() and cols.any():
             rmin, rmax = np.where(rows)[0][[0, -1]]
             cmin, cmax = np.where(cols)[0][[0, -1]]
             content_x = int(cmin)
             content_y = int(rmin)
-            content_w = int(cmax - cmin + 1)
-            content_h = int(rmax - rmin + 1)
         
+        # Calculate the sprite grid origin in original image coordinates
+        grid_origin_x = final_x + sprite_grid_x0
+        grid_origin_y = final_y + sprite_grid_y0
+        grid_span_w = sprite_grid_x1 - sprite_grid_x0
+        grid_span_h = sprite_grid_y1 - sprite_grid_y0
+        
+        # Use tobytes() instead of tolist() for much faster serialization
+        # The JS side will reconstruct the array
         results.append({
-            "sprite_data": indexed_sprite_rgba.tolist(),
+            "sprite_data_bytes": indexed_sprite_rgba.tobytes(),
             "width": indexed_sprite_rgba.shape[1],
             "height": indexed_sprite_rgba.shape[0],
             "centered_x": centered_x,
             "centered_y": centered_y,
-            "crop_x": final_x,
-            "crop_y": final_y,
-            "crop_w": final_w,
-            "crop_h": final_h,
             "content_x": content_x,
             "content_y": content_y,
-            "content_w": content_w,
-            "content_h": content_h
+            "grid_size_x": float(spacing_x),
+            "grid_size_y": float(spacing_y),
+            "grid_origin_x": float(grid_origin_x),
+            "grid_origin_y": float(grid_origin_y),
+            "grid_span_w": float(grid_span_w),
+            "grid_span_h": float(grid_span_h)
         })
         
-    report_progress(100, '处理完成！')
+    report_progress(100, 'processingComplete')
     return results
 
-def process_image_from_js(image_data_list, width, height, options=None):
+def process_image_from_js(image_data, width, height, options=None):
     import numpy as np
     
     # 默认参数处理
     if options is None:
         options = {}
     
-    # 解析 options Map (因为从 JS 传来的 dict 会变成 Pyodide 的 JsProxy 或者 Map)
-    # Pyodide 0.2x 可能会自动转换，为了稳妥我们做一层转换
+    # 解析 options (JsProxy -> dict)
     try:
-        # 如果是 JsProxy，转换为 dict
         if hasattr(options, 'to_py'):
             options = options.to_py()
     except:
-        pass # 假设已经是 dict
-        
-    print(f"Image loaded in Python, processing with options: {options}")
+        pass
     
-    img = np.array(image_data_list, dtype=np.uint8).reshape(height, width, 4)
+    # 解析图像数据 (Uint8Array/JsProxy -> numpy array)
+    # 使用 np.asarray 可以直接从 TypedArray 创建视图，比 np.array 更快
+    try:
+        if hasattr(image_data, 'to_py'):
+            # Pyodide JsProxy - convert to bytes then to numpy
+            img_bytes = image_data.to_py()
+            img = np.frombuffer(img_bytes, dtype=np.uint8).reshape(height, width, 4)
+        else:
+            img = np.asarray(image_data, dtype=np.uint8).reshape(height, width, 4)
+    except:
+        # Fallback
+        img = np.array(image_data, dtype=np.uint8).reshape(height, width, 4)
+    
+    print(f"Image loaded in Python ({width}x{height}), processing with options: {options}")
     
     try:
         # 构造参数字典
@@ -542,6 +623,7 @@ def process_image_from_js(image_data_list, width, height, options=None):
         if 'min_sprite_size' in options: kwargs['min_sprite_size'] = int(options['min_sprite_size'])
         if 'island_size_to_remove' in options: kwargs['island_size_to_remove'] = int(options['island_size_to_remove'])
         if 'detect_transparency_color' in options: kwargs['detect_transparency_color'] = bool(options['detect_transparency_color'])
+        if 'remove_background_color' in options: kwargs['remove_background_color'] = bool(options['remove_background_color'])
         if 'default_transparency_color_hex' in options: kwargs['default_transparency_color_hex'] = str(options['default_transparency_color_hex']).replace('#', '')
         if 'symmetry_coefficient_threshold' in options: kwargs['symmetry_coefficient_threshold'] = float(options['symmetry_coefficient_threshold'])
         if 'color_quantization_method' in options: kwargs['color_quantization_method'] = str(options['color_quantization_method'])
@@ -560,20 +642,23 @@ def process_image_from_js(image_data_list, width, height, options=None):
 // 初始化逻辑
 async function main() {
   try {
-    self.postMessage({ type: 'log', message: 'Loading Pyodide runtime...' });
+    const startTime = Date.now();
+    self.postMessage({ type: 'log', message: 'Loading Pyodide + packages (parallel)...' });
     
-    // Redirect stdout/stderr to main thread
+    // Load Pyodide with packages in parallel for fastest startup
     pyodide = await loadPyodide({
         stdout: (msg) => self.postMessage({ type: 'log', message: msg }),
-        stderr: (msg) => self.postMessage({ type: 'log', message: "STDERR: " + msg })
+        stderr: (msg) => self.postMessage({ type: 'log', message: "STDERR: " + msg }),
+        // packages option enables parallel download during WASM init
+        packages: ["numpy", "scipy", "scikit-image", "scikit-learn"]
     });
     
-    self.postMessage({ type: 'log', message: 'Loading Python libraries (this may take a moment)...' });
-    await pyodide.loadPackage(["numpy", "scipy", "scikit-image", "scikit-learn"]);
+    self.postMessage({ type: 'log', message: `Pyodide + packages loaded in ${((Date.now() - startTime) / 1000).toFixed(1)}s. Initializing Python...` });
     
-    self.postMessage({ type: 'log', message: 'Compiling Python core...' });
+    const initStart = Date.now();
     pyodide.runPython(PYTHON_CORE_CODE);
     
+    self.postMessage({ type: 'log', message: `Python init: ${((Date.now() - initStart) / 1000).toFixed(1)}s. Total: ${((Date.now() - startTime) / 1000).toFixed(1)}s` });
     self.postMessage({ type: 'status', message: 'ready' });
   } catch (e) {
     self.postMessage({ type: 'status', message: 'error', error: e.toString() });
@@ -582,7 +667,7 @@ async function main() {
 }
 
 self.onmessage = async (event) => {
-  const { type, pixelArray, width, height, options } = event.data;
+  const { type, pixelBuffer, width, height, options } = event.data;
   
   if (type === 'init') {
      if (!pyodide) await main();
@@ -594,13 +679,25 @@ self.onmessage = async (event) => {
      try {
          const process_image_from_js = pyodide.globals.get('process_image_from_js');
          
-         // Convert JS array to Python list/array implicitly or explicitly
-         // pixelArray is a standard JS array of numbers.
+         // Convert ArrayBuffer to Uint8Array for Pyodide
+         const pixelArray = new Uint8Array(pixelBuffer);
          const pyResults = process_image_from_js(pixelArray, width, height, options);
          
-         // Convert PyProxy to JS object (Map -> Object)
-         const results = pyResults.toJs({ dict_converter: Object.fromEntries });
+         // Convert PyProxy to JS object
+         const rawResults = pyResults.toJs({ dict_converter: Object.fromEntries });
          pyResults.destroy();
+         
+         // Convert sprite_data_bytes to Uint8Array
+         const results = rawResults.map(r => {
+             if (!r || !r.sprite_data_bytes) return r;
+             
+             const bytes = r.sprite_data_bytes;
+             // Convert to Uint8Array (it may be a Python bytes proxy)
+             const sprite_data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+             
+             const { sprite_data_bytes, ...rest } = r;
+             return { ...rest, sprite_data };
+         });
          
          self.postMessage({ type: 'result', results });
      } catch(e) {
