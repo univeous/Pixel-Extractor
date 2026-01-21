@@ -35,3 +35,7 @@ npm run build
 ```
 
 Output will be in `dist/` folder.
+
+## Credits
+
+Core extraction algorithm based on [ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor) by Donitzo.
