@@ -1,4 +1,4 @@
-# Pixel Extractor
+# <img src="public/icon.svg" width="28" height="28" style="vertical-align: middle"> Pixel Extractor
 
 A web-based tool to extract pixel art sprites from AI-generated or upscaled images, built on top of [Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor).
 
