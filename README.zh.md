@@ -1,6 +1,6 @@
 # <img src="public/icon.svg" width="28" height="28" style="vertical-align: middle"> Pixel Extractor
 
-**语言：** [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
+[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
 
 一个基于 Web 的工具，用于从 AI 生成的或保存不当的像素画（如 JPEG 伪影）中提取干净的像素艺术精灵图，基于 [Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor) 构建。
 

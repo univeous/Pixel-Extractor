@@ -1,6 +1,6 @@
 # <img src="public/icon.svg" width="28" height="28" style="vertical-align: middle"> Pixel Extractor
 
-**言語：** [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
+[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
 
 AI生成または不適切に保存されたピクセルアート（例：JPEGアーティファクト）からクリーンなピクセルアートスプライトを抽出するWebベースのツール。[Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor) を基に構築されています。
 
