@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, createContext } from 'react';
-import { ProcessOptions, HistoryItem, WorkerStatus } from './types';
+import { ProcessOptions, HistoryItem, WorkerStatus, ANALYSIS_DATA_VERSION } from './types';
 import { DetailsModal } from './components/DetailsModal';
 import { GlobalLoader } from './components/GlobalLoader';
 import { LogPanel } from './components/LogPanel';
@@ -9,6 +9,27 @@ import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { UploadArea } from './components/UploadArea';
 import { Locale, loadLocale, saveLocale, useTranslation } from './i18n/index';
 import { loadHistoryFromDB, saveItemToDB, deleteItemFromDB } from './storage';
+
+// Simple hash function for image data
+async function hashImageData(dataUrl: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(dataUrl);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Compare options for equality
+function optionsEqual(a: ProcessOptions, b: ProcessOptions): boolean {
+  return a.max_colors === b.max_colors &&
+    a.min_sprite_size === b.min_sprite_size &&
+    a.island_size_to_remove === b.island_size_to_remove &&
+    a.detect_transparency_color === b.detect_transparency_color &&
+    a.remove_background_color === b.remove_background_color &&
+    a.default_transparency_color_hex === b.default_transparency_color_hex &&
+    a.color_quantization_method === b.color_quantization_method &&
+    a.edge_detection_quantization_method === b.edge_detection_quantization_method;
+}
 
 // Locale context for child components
 export const LocaleContext = createContext<{ 
@@ -31,6 +52,7 @@ const App: React.FC = () => {
     name: string;
     usedOptions: ProcessOptions;
     startTime: number;
+    imageHash?: string;
   } | null>(null);
 
   // State
@@ -122,7 +144,9 @@ const App: React.FC = () => {
               originalHeight: fileInfo.height,
               results: results || [],
               options: fileInfo.usedOptions,
-              processingTime
+              processingTime,
+              imageHash: fileInfo.imageHash,
+              dataVersion: ANALYSIS_DATA_VERSION
             };
             
             setHistory(prev => [newItem, ...prev]);
@@ -143,13 +167,31 @@ const App: React.FC = () => {
     return () => worker.terminate();
   }, []);
 
-  const triggerProcess = (file: File) => {
+  const triggerProcess = async (file: File) => {
     if (status !== 'ready' && status !== 'error' && status !== 'init') return;
     setStatus('processing');
     setProgress({ step: 0, msg: t('readingFile') });
     
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
+      const dataUrl = e.target?.result as string;
+      
+      // Calculate hash and check for existing identical result
+      const imageHash = await hashImageData(dataUrl);
+      const existingItem = history.find(item => 
+        item.imageHash === imageHash && 
+        item.dataVersion === ANALYSIS_DATA_VERSION &&
+        optionsEqual(item.options, options)
+      );
+      
+      if (existingItem) {
+        // Found identical previous result, just open it
+        setStatus('ready');
+        setSelectedHistoryItem(existingItem);
+        addLog(t('foundCachedResult'));
+        return;
+      }
+      
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -164,12 +206,13 @@ const App: React.FC = () => {
         const imageData = ctx.getImageData(0, 0, img.width, img.height);
         
         currentProcessingFile.current = {
-          url: e.target?.result as string,
+          url: dataUrl,
           width: img.width,
           height: img.height,
           name: file.name,
           usedOptions: { ...options },
-          startTime: Date.now()
+          startTime: Date.now(),
+          imageHash
         };
         
         const buffer = imageData.data.buffer.slice(0);
@@ -181,7 +224,7 @@ const App: React.FC = () => {
           options: options
         }, [buffer]);
       };
-      img.src = e.target?.result as string;
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   };

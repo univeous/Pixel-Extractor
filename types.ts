@@ -9,6 +9,39 @@ export interface ProcessOptions {
   edge_detection_quantization_method: 'histogram' | 'kmeans';
 }
 
+export interface SpriteAnalysis {
+  profile_x: number[];
+  profile_y: number[];
+  edges_x: number[];
+  edges_y: number[];
+  peaks_x: number[];
+  peaks_y: number[];
+  prominences_x: number[];
+  prominences_y: number[];
+  spacings_x: number[];
+  spacings_y: number[];
+  errors_x: number[];
+  errors_y: number[];
+  peak_counts_x: number[];
+  peak_counts_y: number[];
+  best_index_x: number;
+  best_index_y: number;
+  error_x: number;
+  error_y: number;
+  // Quantized image for grid visualization
+  indexed_image_data?: number[];
+  indexed_image_w?: number;
+  indexed_image_h?: number;
+  // Edge detection images (as number arrays from Python)
+  edges_image_x?: number[];
+  edges_image_y?: number[];
+  // Symmetry info
+  symmetry_x_r: number;
+  symmetry_y_r: number;
+  center_x: number;
+  center_y: number;
+}
+
 export interface SpriteResult {
   sprite_data: Uint8Array; // Flat RGBA data (width * height * 4 bytes)
   width: number;
@@ -26,7 +59,12 @@ export interface SpriteResult {
   grid_origin_y: number;
   grid_span_w: number;
   grid_span_h: number;
+  // Analysis data for debug report
+  analysis?: SpriteAnalysis;
 }
+
+// Version of analysis data structure - increment when Python output format changes
+export const ANALYSIS_DATA_VERSION = 2;
 
 export interface HistoryItem {
   id: string;
@@ -37,6 +75,8 @@ export interface HistoryItem {
   results: SpriteResult[];
   options: ProcessOptions;
   processingTime: number; // in milliseconds
+  imageHash?: string; // Hash of image data for deduplication
+  dataVersion?: number; // Version of analysis data structure
 }
 
 export type WorkerStatus = 'init' | 'ready' | 'processing' | 'error';

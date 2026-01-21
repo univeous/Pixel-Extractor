@@ -53,7 +53,7 @@ export default {
   off: 'オフ',
   downloadOriginal: '元画像を保存',
   downloadProcessed: '結果を保存',
-  debugInfo: 'デバッグ',
+  debugInfo: '分析レポート',
   
   // View modes
   split: '比較',
@@ -63,6 +63,7 @@ export default {
   // Processing messages (from Python)
   readingFile: 'ファイル読み込み中...',
   complete: '完了！',
+  foundCachedResult: '同一のキャッシュ結果が見つかりました。処理をスキップします。',
   processingInit: '初期化中...',
   processingDenoise: 'ノイズ除去中...',
   processingAnalyzeColor: '透明色を分析中...',

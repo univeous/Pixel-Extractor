@@ -53,7 +53,7 @@ export default {
   off: 'Off',
   downloadOriginal: 'Save Original',
   downloadProcessed: 'Save Result',
-  debugInfo: 'Debug',
+  debugInfo: 'Analysis',
   
   // View modes
   split: 'Compare',
@@ -63,6 +63,7 @@ export default {
   // Processing messages (from Python)
   readingFile: 'Reading file...',
   complete: 'Complete!',
+  foundCachedResult: 'Found identical cached result, skipping processing.',
   processingInit: 'Initializing...',
   processingDenoise: 'Denoising...',
   processingAnalyzeColor: 'Analyzing transparency...',

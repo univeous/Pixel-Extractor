@@ -53,7 +53,7 @@ export default {
   off: '关',
   downloadOriginal: '保存原图',
   downloadProcessed: '保存结果',
-  debugInfo: '调试',
+  debugInfo: '分析报告',
   
   // View modes
   split: '对比',
@@ -63,6 +63,7 @@ export default {
   // Processing messages (from Python)
   readingFile: '读取文件...',
   complete: '完成！',
+  foundCachedResult: '找到相同的缓存结果，跳过处理。',
   processingInit: '初始化...',
   processingDenoise: '降噪处理...',
   processingAnalyzeColor: '分析透明色...',

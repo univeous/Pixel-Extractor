@@ -1,14 +1,12 @@
-
-
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Icons } from './Icons';
 import { SpriteCanvas } from './SpriteCanvas';
 import { PaletteDisplay } from './PaletteDisplay';
 import { PanZoomContainer } from './PanZoomContainer';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
+import { AnalysisPanel } from './AnalysisPanel';
 import { HistoryItem, ViewMode } from '../types';
 import { LocaleContext } from '../App';
-import type { TranslationKey } from '../i18n/index';
 
 export const DetailsModal: React.FC<{ 
     item: HistoryItem; 
@@ -19,23 +17,32 @@ export const DetailsModal: React.FC<{
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [viewMode, setViewMode] = useState<ViewMode>('split');
     const [selectedSpriteIndex, setSelectedSpriteIndex] = useState(0);
-    const [showDebug, setShowDebug] = useState(false);
+    const [showAnalysis, setShowAnalysis] = useState(false);
     const [stretchOriginal, setStretchOriginal] = useState(true);
     const sprite = item.results && item.results[selectedSpriteIndex];
     const containerRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                // If analysis is open, close it first; otherwise close modal
+                if (showAnalysis) {
+                    setShowAnalysis(false);
+                } else {
+                    onClose();
+                }
+            }
+        };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose]);
+    }, [onClose, showAnalysis]);
 
     // Initial Fit
     useEffect(() => {
         if (sprite && containerRef.current) {
             handleFit();
         }
-    }, [sprite, viewMode]); // Re-fit when view mode changes
+    }, [sprite, viewMode]);
 
     const handleZoomMultiplier = (multiplier: number) => {
         setZoom(z => {
@@ -54,7 +61,6 @@ export const DetailsModal: React.FC<{
     const handleFit = () => {
         if (!sprite || !containerRef.current) return;
         
-        // Reset Pan to Center
         setPan({ x: 0, y: 0 });
 
         const rect = containerRef.current.getBoundingClientRect();
@@ -67,11 +73,9 @@ export const DetailsModal: React.FC<{
             contentW = item.originalWidth;
             contentH = item.originalHeight;
         } else if (viewMode === 'split') {
-            // For split view, container shows full sprite at grid scale
             contentW = sprite.width * sprite.grid_size_x;
             contentH = sprite.height * sprite.grid_size_y;
         } else {
-            // result
             contentW = sprite.width;
             contentH = sprite.height;
         }
@@ -79,17 +83,28 @@ export const DetailsModal: React.FC<{
         const wRatio = availableW / contentW;
         const hRatio = availableH / contentH;
         
-        // Ensure at least 1x if possible, otherwise fit to screen
-        // But for pixel art, fitting to screen usually means zooming in
         const fitZoom = Math.min(wRatio, hRatio);
         setZoom(fitZoom);
     };
 
     if (!sprite) return null;
 
-    // Grid span is the area in original image that the sprite covers
     const baseW = Math.round(sprite.grid_span_w);
     const baseH = Math.round(sprite.grid_span_h);
+
+    // Analysis full-screen overlay
+    if (showAnalysis) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+                <div className="bg-[#1e1e1e] border border-[#3e3e42] rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+                    <AnalysisPanel 
+                        sprite={sprite} 
+                        onBack={() => setShowAnalysis(false)}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
@@ -173,7 +188,6 @@ export const DetailsModal: React.FC<{
 
                         {viewMode === 'original' && (
                             <div className="relative">
-                                {/* Display FULL Original Image for Context */}
                                 <img 
                                     src={item.originalImage}
                                     style={{ 
@@ -231,26 +245,32 @@ export const DetailsModal: React.FC<{
                          
                          {/* Dimensions */}
                          <div className="bg-[#1e1e1e] p-3 rounded border border-[#3e3e42]">
-                             <div className="text-xs text-gray-500 uppercase font-bold mb-2">{t('dimensions')}</div>
+                             <div className="text-xs text-gray-500 uppercase font-bold mb-2">{t('dimensions')} <span className="normal-case font-normal">(px)</span></div>
                              <div className="grid grid-cols-3 gap-3 text-center">
-                                 <div>
-                                     <div className="text-lg font-mono text-white">{sprite.width}x{sprite.height}</div>
-                                     <div className="text-[10px] text-gray-500">{t('result')}</div>
+                                 <div className="flex flex-col items-center justify-end">
+                                     <div className="font-mono text-white text-center leading-none">
+                                         <div className="text-sm">{sprite.width}</div>
+                                         <div className="text-[8px] text-gray-400 -my-1">×</div>
+                                         <div className="text-sm">{sprite.height}</div>
+                                     </div>
+                                     <div className="text-[10px] text-gray-500 mt-0.5">{t('result')}</div>
                                  </div>
-                                 <div>
-                                     <div className="text-lg font-mono text-gray-400">{baseW}x{baseH}</div>
-                                     <div className="text-[10px] text-gray-500">{t('originalCrop')}</div>
+                                 <div className="flex flex-col items-center justify-end">
+                                     <div className="font-mono text-gray-400 text-center leading-none">
+                                         <div className="text-sm">{baseW}</div>
+                                         <div className="text-[8px] text-gray-500 -my-1">×</div>
+                                         <div className="text-sm">{baseH}</div>
+                                     </div>
+                                     <div className="text-[10px] text-gray-500 mt-0.5">{t('originalCrop')}</div>
                                  </div>
-                                <div>
-                                    {(() => {
-                                        const gridText = sprite.grid_size_x === sprite.grid_size_y 
-                                            ? `${sprite.grid_size_x.toFixed(1)}` 
-                                            : `${sprite.grid_size_x.toFixed(1)}×${sprite.grid_size_y.toFixed(1)}`;
-                                        const textSize = gridText.length > 7 ? 'text-sm' : 'text-lg';
-                                        return <div className={`${textSize} font-mono text-blue-400 truncate`}>{gridText}</div>;
-                                    })()}
-                                    <div className="text-[10px] text-gray-500">{t('gridSize')}</div>
-                                </div>
+                                 <div className="flex flex-col items-center justify-end">
+                                     <div className="font-mono text-blue-400 text-center leading-none">
+                                         <div className="text-sm">{sprite.grid_size_x.toFixed(1)}</div>
+                                         <div className="text-[8px] text-blue-300 -my-1">×</div>
+                                         <div className="text-sm">{sprite.grid_size_y.toFixed(1)}</div>
+                                     </div>
+                                     <div className="text-[10px] text-gray-500 mt-0.5">{t('gridSize')}</div>
+                                 </div>
                              </div>
                          </div>
 
@@ -276,22 +296,29 @@ export const DetailsModal: React.FC<{
                                  <span>{item.options.island_size_to_remove}</span>
                              </div>
                              <div className="flex justify-between border-b border-[#3e3e42] pb-1">
-                                 <span className="text-gray-400">{t('autoTransparency')}</span>
-                                 <span>{item.options.detect_transparency_color ? t('on') : t('off')}</span>
-                             </div>
-                             <div className="flex justify-between border-b border-[#3e3e42] pb-1">
                                  <span className="text-gray-400">{t('colorSampling')}</span>
                                  <span className="capitalize">{item.options.color_quantization_method}</span>
                              </div>
-                             <div className="flex justify-between border-b border-[#3e3e42] pb-1">
+                             <div className="flex justify-between pb-1">
                                  <span className="text-gray-400">{t('edgeDetection')}</span>
                                  <span className="capitalize">{item.options.edge_detection_quantization_method}</span>
                              </div>
                          </div>
 
-                        <div className="space-y-2">
+                        {sprite.analysis && (
+                            <div className="border-t border-[#3e3e42] pt-3 !mt-3">
+                                <button 
+                                    onClick={() => setShowAnalysis(true)}
+                                    className="w-full text-gray-400 hover:text-white bg-[#3c3c3c] hover:bg-[#444] border border-[#3e3e42] rounded py-2 flex items-center gap-2 justify-center transition-colors"
+                                >
+                                    <Icons.Settings /><span>{t('debugInfo')}</span>
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="border-t border-[#3e3e42] pt-3 !mt-3 space-y-2">
                             <button 
-                                className="w-full bg-[#3c3c3c] hover:bg-[#4c4c4c] text-gray-300 py-2 rounded border border-[#3e3e42] transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-[#3c3c3c] hover:bg-[#4c4c4c] text-gray-300 py-2 rounded border border-[#3e3e42] transition-colors flex items-center gap-2 justify-center"
                                 onClick={() => {
                                    const link = document.createElement('a');
                                    link.download = `original_${item.id}.png`;
@@ -299,10 +326,10 @@ export const DetailsModal: React.FC<{
                                    link.click();
                                 }}
                             >
-                                <Icons.Download /> {t('downloadOriginal')}
+                                <Icons.Download /><span>{t('downloadOriginal')}</span>
                             </button>
                             <button 
-                                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded shadow-lg transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded shadow-lg transition-colors flex items-center gap-2 justify-center"
                                 onClick={() => {
                                    const link = document.createElement('a');
                                    const canvas = document.createElement('canvas');
@@ -319,42 +346,8 @@ export const DetailsModal: React.FC<{
                                    }
                                 }}
                             >
-                                <Icons.Download /> {t('downloadProcessed')}
+                                <Icons.Download /><span>{t('downloadProcessed')}</span>
                             </button>
-                        </div>
-
-                        {/* Debug Info */}
-                        <div className="border-t border-[#3e3e42] pt-4 mt-4">
-                            <button 
-                                onClick={() => setShowDebug(!showDebug)}
-                                className="text-[10px] text-gray-500 hover:text-gray-400 flex items-center gap-1"
-                            >
-                                {showDebug ? '▼' : '▶'} {t('debugInfo')}
-                            </button>
-                            {showDebug && (
-                                <pre className="mt-2 text-[9px] text-gray-500 bg-black/30 p-2 rounded overflow-auto max-h-48 font-mono">
-{JSON.stringify({
-    original: { w: item.originalWidth, h: item.originalHeight },
-    sprite: { w: sprite.width, h: sprite.height },
-    content: { x: sprite.content_x, y: sprite.content_y },
-    grid: { 
-        sizeX: sprite.grid_size_x, 
-        sizeY: sprite.grid_size_y,
-        originX: sprite.grid_origin_x,
-        originY: sprite.grid_origin_y,
-        spanW: sprite.grid_span_w,
-        spanH: sprite.grid_span_h
-    },
-    computed: {
-        spriteCoversW: sprite.width * sprite.grid_size_x,
-        spriteCoversH: sprite.height * sprite.grid_size_y,
-        mismatchW: sprite.grid_span_w - sprite.width * sprite.grid_size_x,
-        mismatchH: sprite.grid_span_h - sprite.height * sprite.grid_size_y,
-    },
-    zoom
-}, null, 2)}
-                                </pre>
-                            )}
                         </div>
                      </div>
                 </div>

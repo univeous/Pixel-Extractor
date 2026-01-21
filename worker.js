@@ -1,5 +1,4 @@
-
-// worker.js
+// worker.js - v2 (analysis image data)
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js");
 
 let pyodide = null;
@@ -581,7 +580,41 @@ def extract_sprites(image_rgba:np.array, detect_transparency_color:bool=True, re
             "grid_origin_x": float(grid_origin_x),
             "grid_origin_y": float(grid_origin_y),
             "grid_span_w": float(grid_span_w),
-            "grid_span_h": float(grid_span_h)
+            "grid_span_h": float(grid_span_h),
+            # Analysis data for debug report
+            "analysis": {
+                "profile_x": profile_x.tolist(),
+                "profile_y": profile_y.tolist(),
+                "edges_x": edges_x.tolist(),
+                "edges_y": edges_y.tolist(),
+                "peaks_x": peaks_x.tolist(),
+                "peaks_y": peaks_y.tolist(),
+                "prominences_x": prominences_x.tolist(),
+                "prominences_y": prominences_y.tolist(),
+                "spacings_x": spacings_x.tolist(),
+                "spacings_y": spacings_y.tolist(),
+                "errors_x": errors_x.tolist(),
+                "errors_y": errors_y.tolist(),
+                "peak_counts_x": peak_counts_x.tolist(),
+                "peak_counts_y": peak_counts_y.tolist(),
+                "best_index_x": int(best_index_x),
+                "best_index_y": int(best_index_y),
+                "error_x": float(error_x),
+                "error_y": float(error_y),
+                # Quantized image for grid visualization
+                "indexed_image_w": int(indexed_image_lab.shape[1]),
+                "indexed_image_h": int(indexed_image_lab.shape[0]),
+                "indexed_image_data": (np.clip(lab2rgb(indexed_image_lab), 0, 1) * 255).astype(np.uint8).flatten().tolist(),
+                # Edge detection images (bool -> 0/255)
+                # image_edges_x shape is (h, w), image_edges_y was swapped so it's (w, h) - need to transpose back
+                "edges_image_x": (image_edges_x.astype(np.uint8) * 255).flatten().tolist(),
+                "edges_image_y": (image_edges_y.T.astype(np.uint8) * 255).flatten().tolist(),
+                # Symmetry info
+                "symmetry_x_r": float(x_r),
+                "symmetry_y_r": float(y_r),
+                "center_x": int(center_x),
+                "center_y": int(center_y),
+            }
         })
         
     report_progress(100, 'processingComplete')
@@ -687,17 +720,50 @@ self.onmessage = async (event) => {
          const rawResults = pyResults.toJs({ dict_converter: Object.fromEntries });
          pyResults.destroy();
          
-         // Convert sprite_data_bytes to Uint8Array
-         const results = rawResults.map(r => {
-             if (!r || !r.sprite_data_bytes) return r;
-             
-             const bytes = r.sprite_data_bytes;
-             // Convert to Uint8Array (it may be a Python bytes proxy)
-             const sprite_data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-             
-             const { sprite_data_bytes, ...rest } = r;
-             return { ...rest, sprite_data };
-         });
+        // Helper to convert various byte formats to Uint8Array
+        const toUint8Array = (data) => {
+            if (!data) return null;
+            if (data instanceof Uint8Array) return data;
+            // Handle Map (Pyodide may return Map for bytes)
+            if (data instanceof Map) {
+                const arr = new Uint8Array(data.size);
+                data.forEach((v, k) => arr[k] = v);
+                return arr;
+            }
+            // Handle array-like or iterable
+            if (Array.isArray(data) || data.length !== undefined) {
+                return new Uint8Array(data);
+            }
+            // Try to iterate
+            try {
+                return new Uint8Array([...data]);
+            } catch {
+                console.warn('Could not convert to Uint8Array:', typeof data, data);
+                return null;
+            }
+        };
+        
+        // Convert bytes to Uint8Array
+        const results = rawResults.map(r => {
+            if (!r || !r.sprite_data_bytes) return r;
+            
+            const sprite_data = toUint8Array(r.sprite_data_bytes);
+            
+            const { sprite_data_bytes, analysis, ...rest } = r;
+            
+            // Convert analysis bytes if present
+            let convertedAnalysis = analysis;
+            if (analysis) {
+                convertedAnalysis = {
+                    ...analysis,
+                    indexed_image_bytes: toUint8Array(analysis.indexed_image_bytes),
+                    image_edges_x: toUint8Array(analysis.image_edges_x),
+                    image_edges_y: toUint8Array(analysis.image_edges_y),
+                };
+            }
+            
+            return { ...rest, sprite_data, analysis: convertedAnalysis };
+        });
          
          self.postMessage({ type: 'result', results });
      } catch(e) {
