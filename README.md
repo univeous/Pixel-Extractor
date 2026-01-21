@@ -1,16 +1,33 @@
 # Pixel Extractor
 
-Extract pixel art sprites from images using Python (Pyodide/WASM).
+A web-based tool to extract pixel art sprites from AI-generated or upscaled images.
+
+![Screenshot](docs/sc1.png)
+
+![Screenshot](docs/sc2.png)
+
+## Why This Tool?
+
+- **Not just resizing** - Uses advanced edge detection and grid fitting algorithms to accurately restore the original pixel grid, not simple nearest-neighbor downscaling
+- **Non-square pixel support** - Handles images where pixels aren't perfect squares (common in AI-generated art)
+- **Automatic sprite detection** - Splits images with multiple sprites into individual assets
+- **Smart color quantization** - Choose between Histogram (fast) or K-Means (accurate) for optimal palette extraction
+- **Background removal** - Auto-detect or manually specify the background color to make it transparent
+- **Before/after comparison** - Interactive slider to compare original and extracted results
 
 ## Features
 
-- Automatic sprite detection and extraction
-- Color quantization (Histogram / K-Means)
-- Grid size detection
-- Background color removal
-- Before/after comparison view
+- Real-time parameter adjustment
+- Processing history with persistence (IndexedDB)
 - PWA support (installable, works offline after first load)
 - Multi-language support (EN / 中文 / 日本語)
+- Modern, polished UI with dark theme
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **Processing**: Python (NumPy, SciPy, scikit-image, scikit-learn) running in WebAssembly via Pyodide
+- **Build**: Vite
 
 ## Run Locally
 
@@ -19,11 +36,9 @@ Extract pixel art sprites from images using Python (Pyodide/WASM).
 ```bash
 # Install dependencies
 npm install
-# or: yarn / pnpm install / bun install
 
 # Run dev server
 npm run dev
-# or: yarn dev / pnpm dev / bun dev
 ```
 
 Open http://localhost:3000
