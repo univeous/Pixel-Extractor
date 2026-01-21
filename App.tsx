@@ -31,6 +31,119 @@ function optionsEqual(a: ProcessOptions, b: ProcessOptions): boolean {
     a.edge_detection_quantization_method === b.edge_detection_quantization_method;
 }
 
+// Network status component
+const NetworkStatus: React.FC<{ t: (key: string) => string }> = ({ t }) => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [hasUpdate, setHasUpdate] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Check for service worker updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        // Check for updates periodically
+        const checkUpdate = () => {
+          registration.update().catch(() => {});
+        };
+        
+        // Check on load and every 5 minutes
+        checkUpdate();
+        const interval = setInterval(checkUpdate, 5 * 60 * 1000);
+        
+        // Listen for new service worker
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setHasUpdate(true);
+              }
+            });
+          }
+        });
+        
+        return () => clearInterval(interval);
+      });
+      
+      // Listen for cache cleared message
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'CACHE_CLEARED') {
+          window.location.reload();
+        }
+      });
+    }
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleRefresh = async () => {
+    // Don't clear cache when offline - would break the app
+    if (!isOnline || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE_AND_RELOAD' });
+      // Fallback if message doesn't trigger reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } else {
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div 
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <button
+        onClick={handleRefresh}
+        disabled={isRefreshing || !isOnline}
+        className={`p-2 rounded-lg transition-colors ${
+          isRefreshing ? 'animate-spin text-blue-400' :
+          hasUpdate ? 'text-yellow-400 hover:bg-yellow-400/10 cursor-pointer' :
+          isOnline ? 'text-green-400 hover:bg-green-400/10 cursor-pointer' : 'text-gray-500 cursor-default'
+        }`}
+        title={isOnline ? (hasUpdate ? t('updateAvailable') : t('online')) : t('offline')}
+      >
+        {isRefreshing ? <Icons.Refresh /> :
+         hasUpdate ? <Icons.Update /> :
+         isOnline ? <Icons.Wifi /> : <Icons.WifiOff />}
+      </button>
+      
+      {showTooltip && (
+        <div className="absolute right-0 top-full mt-2 bg-[#2d2d30] border border-[#3e3e42] rounded-lg shadow-xl p-3 z-50 min-w-[200px] text-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+            <span className="text-gray-300">{isOnline ? t('online') : t('offline')}</span>
+          </div>
+          {hasUpdate && (
+            <div className="text-yellow-400 mb-2">{t('updateAvailable')}</div>
+          )}
+          {isOnline && (
+            <div className="text-gray-500 text-[10px] border-t border-[#3e3e42] pt-2 mt-2">
+              {t('clickToRefresh')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Locale context for child components
 export const LocaleContext = createContext<{ 
   locale: Locale; 
@@ -249,8 +362,12 @@ const App: React.FC = () => {
           </span>
         </div>
         <div className="flex-1"></div>
+        
+        {/* Network Status */}
+        <NetworkStatus t={t} />
+        
         {/* Language Switcher */}
-        <div className="relative">
+        <div className="relative ml-2">
           <button 
             onClick={() => setLangMenuOpen(!langMenuOpen)}
             onBlur={() => setTimeout(() => setLangMenuOpen(false), 150)}
@@ -288,7 +405,7 @@ const App: React.FC = () => {
         />
 
         <main className="flex-1 flex flex-col relative min-h-0">
-          <div className="flex-1 relative flex flex-col">
+          <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
             {status === 'processing' && currentProcessingFile.current && (
               <ProcessingOverlay 
                 imageUrl={currentProcessingFile.current.url}

@@ -20,9 +20,9 @@ export default {
   islandRemovalSize: 'Island Removal',
   islandRemovalSizeHelp: 'Removes small isolated pixel groups (islands) smaller than this value to clean up noisy edges.',
   colorSampling: 'Color Sampling',
-  colorSamplingHelp: 'Method used to reduce colors. Histogram is faster but K-Means produces higher quality palettes.',
+  colorSamplingHelp: 'Method used to reduce colors. Different methods suit different art styles.',
   edgeDetection: 'Edge Detection',
-  edgeDetectionHelp: 'Algorithm used to detect sprite boundaries. K-Means is generally more accurate for complex backgrounds.',
+  edgeDetectionHelp: 'Algorithm used to detect sprite boundaries. Different methods suit different art styles.',
   removeBackgroundColor: 'Remove Background',
   removeBackgroundColorHelp: 'Enable to treat a specific color (auto-detected or manual) as transparent. Disable to only use the original alpha channel.',
   autoDetectBackground: 'Auto Detect',
@@ -75,4 +75,10 @@ export default {
   processingGridFit: 'Grid fitting...',
   processingGenerateSprite: 'Generating sprite...',
   processingComplete: 'Done!',
+  
+  // Network status
+  online: 'Online',
+  offline: 'Offline (using cached data)',
+  updateAvailable: 'Update available',
+  clickToRefresh: 'Click to clear cache and reload',
 } as const;

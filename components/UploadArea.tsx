@@ -21,7 +21,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ status, onFileSelect, t 
 
   return (
     <div 
-      className={`flex-1 flex flex-col items-center justify-center border-4 border-dashed m-8 rounded-3xl transition-all cursor-pointer ${status === 'ready' ? 'border-[#3e3e42] hover:border-blue-500 hover:bg-blue-500/5' : 'border-red-900/50 opacity-50'}`}
+      className={`flex-1 flex flex-col items-center justify-center border-4 border-dashed m-8 rounded-3xl transition-all cursor-pointer min-h-0 ${status === 'ready' ? 'border-[#3e3e42] hover:border-blue-500 hover:bg-blue-500/5' : 'border-red-900/50 opacity-50'}`}
       onClick={() => document.getElementById('file-upload')?.click()}
       onDragOver={e => e.preventDefault()}
       onDrop={handleDrop}

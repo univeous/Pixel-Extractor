@@ -3,8 +3,7 @@
 A web-based tool to extract pixel art sprites from AI-generated or upscaled images, built on top of [Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor).
 
 <p align="center">
-  <img src="docs/sc2.png" width="49%" />
-  <img src="docs/sc1.png" width="49%" />
+  <img src="docs/sc1.png" width="80%" />
 </p>
 
 ## Why This Tool?
@@ -50,6 +49,17 @@ npm run build
 ```
 
 Output will be in `dist/` folder.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/sc4.png" width="49%" />
+  <img src="docs/sc2.png" width="49%" />
+</p>
+<p align="center">
+  <img src="docs/sc5.png" width="49%" />
+  <img src="docs/sc3.png" width="49%" />
+</p>
 
 ## Credits
 

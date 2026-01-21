@@ -120,7 +120,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// 接收消息 - 用于手动触发 Pyodide 预缓存
+// 接收消息
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CACHE_PYODIDE') {
     console.log('[SW] Pre-caching Pyodide assets...');
@@ -141,5 +141,33 @@ self.addEventListener('message', (event) => {
         console.log('[SW] Pyodide pre-cache complete');
       })
     );
+  }
+  
+  // 清除缓存并刷新
+  if (event.data && event.data.type === 'CLEAR_CACHE_AND_RELOAD') {
+    console.log('[SW] Clearing cache...');
+    event.waitUntil(
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((name) => {
+            console.log('[SW] Deleting cache:', name);
+            return caches.delete(name);
+          })
+        );
+      }).then(() => {
+        console.log('[SW] Cache cleared, notifying clients');
+        // 通知所有客户端刷新
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'CACHE_CLEARED' });
+          });
+        });
+      })
+    );
+  }
+  
+  // 获取当前缓存版本
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: CACHE_NAME });
   }
 });

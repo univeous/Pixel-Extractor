@@ -20,9 +20,9 @@ export default {
   islandRemovalSize: '孤立除去',
   islandRemovalSizeHelp: '指定サイズより小さい孤立ピクセルを除去し、エッジをクリーンアップします。',
   colorSampling: 'カラーサンプリング',
-  colorSamplingHelp: '減色方法。Histogram は高速、K-Means は高品質。',
+  colorSamplingHelp: '減色方法。異なる方法は異なるアートスタイルに適しています。',
   edgeDetection: 'エッジ検出',
-  edgeDetectionHelp: 'Sprite 境界の検出アルゴリズム。K-Means は複雑な背景に効果的。',
+  edgeDetectionHelp: 'Sprite 境界の検出アルゴリズム。異なる方法は異なるアートスタイルに適しています。',
   removeBackgroundColor: '背景色除去',
   removeBackgroundColorHelp: '特定の色（自動検出または手動指定）を透明として扱います。無効時は元の Alpha チャンネルのみ使用。',
   autoDetectBackground: '自動検出',
@@ -75,4 +75,10 @@ export default {
   processingGridFit: 'グリッドフィッティング中...',
   processingGenerateSprite: 'Sprite 生成中...',
   processingComplete: '処理完了！',
+  
+  // Network status
+  online: 'オンライン',
+  offline: 'オフライン（キャッシュデータを使用）',
+  updateAvailable: '更新が利用可能です',
+  clickToRefresh: 'クリックでキャッシュをクリアして再読み込み',
 } as const;

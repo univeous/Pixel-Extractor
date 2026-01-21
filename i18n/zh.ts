@@ -20,9 +20,9 @@ export default {
   islandRemovalSize: '孤岛过滤',
   islandRemovalSizeHelp: '移除小于此尺寸的孤立像素块，清理边缘噪点。',
   colorSampling: '颜色采样',
-  colorSamplingHelp: '颜色量化方法。Histogram 更快，K-Means 质量更高。',
+  colorSamplingHelp: '颜色量化方法。不同方法适合不同的画风。',
   edgeDetection: '边缘检测',
-  edgeDetectionHelp: '检测 Sprite 边界的算法。K-Means 对复杂背景更准确。',
+  edgeDetectionHelp: '检测 Sprite 边界的算法。不同方法适合不同的画风。',
   removeBackgroundColor: '去除背景色',
   removeBackgroundColorHelp: '启用后会将指定颜色（自动检测或手动）视为透明。禁用则仅使用原有 Alpha 通道。',
   autoDetectBackground: '自动检测',
@@ -75,4 +75,10 @@ export default {
   processingGridFit: '网格拟合...',
   processingGenerateSprite: '生成 Sprite...',
   processingComplete: '处理完成！',
+  
+  // Network status
+  online: '在线',
+  offline: '离线（使用缓存数据）',
+  updateAvailable: '有新版本可用',
+  clickToRefresh: '点击清除缓存并刷新',
 } as const;
