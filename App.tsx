@@ -427,7 +427,15 @@ const App: React.FC = () => {
 
       {/* Header */}
       <header className="h-14 bg-[#252526] border-b border-[#3e3e42] flex items-center px-4 shrink-0">
-        <h1 className="text-xl font-bold text-white mr-4">{t('appTitle')}</h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-xl font-bold text-white">{t('appTitle')}</h1>
+          <span 
+            className="text-[10px] text-gray-500 font-mono"
+            title={`Version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}`}
+          >
+            {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}
+          </span>
+        </div>
         <div className="flex items-center gap-2 text-xs">
           <span className={`w-2 h-2 rounded-full ${status === 'ready' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]' : status === 'processing' ? 'bg-yellow-400 animate-pulse' : 'bg-red-500'}`}></span>
           <span className="opacity-70">
