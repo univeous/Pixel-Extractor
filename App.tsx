@@ -31,6 +31,40 @@ function optionsEqual(a: ProcessOptions, b: ProcessOptions): boolean {
     a.edge_detection_quantization_method === b.edge_detection_quantization_method;
 }
 
+// GitHub button with star count
+const GitHubButton: React.FC = () => {
+  const [stars, setStars] = useState<number | null>(null);
+  
+  useEffect(() => {
+    // Fetch star count from GitHub API
+    fetch('https://api.github.com/repos/univeous/Pixel-Extractor')
+      .then(res => res.json())
+      .then(data => {
+        if (data.stargazers_count !== undefined) {
+          setStars(data.stargazers_count);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  
+  return (
+    <a
+      href="https://github.com/univeous/Pixel-Extractor"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 p-2 rounded-lg text-sm text-gray-400 hover:text-gray-300 hover:bg-[#3e3e42] transition-colors"
+    >
+      <Icons.GitHub />
+      {stars !== null && (
+        <>
+          <span className="text-yellow-400">★</span>
+          <span>{stars}</span>
+        </>
+      )}
+    </a>
+  );
+};
+
 // Network status component
 const NetworkStatus: React.FC<{ t: (key: string) => string }> = ({ t }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -404,6 +438,9 @@ const App: React.FC = () => {
         
         {/* Network Status */}
         <NetworkStatus t={t} />
+        
+        {/* GitHub Button */}
+        <GitHubButton />
         
         {/* Language Switcher */}
         <div className="relative ml-2">
