@@ -81,4 +81,9 @@ export default {
   offline: '离线（使用缓存数据）',
   updateAvailable: '有新版本可用',
   clickToRefresh: '点击清除缓存并刷新',
+  
+  // Context menu
+  reprocessOriginal: '用当前参数重新处理原图',
+  reprocessResult: '用当前参数重新处理结果',
+  delete: '删除',
 } as const;

@@ -81,4 +81,9 @@ export default {
   offline: 'Offline (using cached data)',
   updateAvailable: 'Update available',
   clickToRefresh: 'Click to clear cache and reload',
+  
+  // Context menu
+  reprocessOriginal: 'Reprocess Original',
+  reprocessResult: 'Reprocess Result',
+  delete: 'Delete',
 } as const;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Icons } from './Icons';
 import { ProcessOptions, HistoryItem } from '../types';
 import { TranslationKey } from '../i18n/index';
@@ -9,29 +9,82 @@ interface SidebarProps {
   history: HistoryItem[];
   onHistorySelect: (item: HistoryItem) => void;
   onHistoryDelete: (id: string) => void;
+  onReprocessOriginal?: (item: HistoryItem) => void;
+  onReprocessResult?: (item: HistoryItem, spriteIndex: number) => void;
   t: (key: TranslationKey) => string;
 }
 
+// Context menu state
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  item: HistoryItem | null;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
-  options, setOptions, history, onHistorySelect, onHistoryDelete, t
+  options, setOptions, history, onHistorySelect, onHistoryDelete, onReprocessOriginal, onReprocessResult, t
 }) => {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, item: null });
+  const contextMenuRef = React.useRef<HTMLDivElement>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, item: HistoryItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Calculate menu position, adjusting if it would go off-screen
+    const menuHeight = 150; // Approximate menu height
+    const menuWidth = 220;
+    
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust if menu would go off right edge
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 5;
+    }
+    
+    // Adjust if menu would go off bottom edge - only raise enough to fit
+    const overflow = (y + menuHeight) - window.innerHeight;
+    if (overflow > 0) {
+      y = y - overflow - 5;
+    }
+    
+    setContextMenu({ visible: true, x, y, item });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu({ visible: false, x: 0, y: 0, item: null });
+  };
+
+  // Close context menu when clicking outside or pressing Escape
+  React.useEffect(() => {
+    if (contextMenu.visible) {
+      const handleClick = () => closeContextMenu();
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') closeContextMenu();
+      };
+      window.addEventListener('click', handleClick);
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('click', handleClick);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [contextMenu.visible]);
   return (
-    <aside className="w-80 bg-[#252526] border-r border-[#3e3e42] flex flex-col shrink-0">
+    <aside className="w-80 bg-[#252526] border-r border-[#3e3e42] flex flex-col shrink-0 h-full overflow-hidden">
       {/* Configuration Area */}
-      <div className="p-4 space-y-4 overflow-x-hidden">
+      <div className="p-4 space-y-4 overflow-y-auto shrink-0">
         <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
           <Icons.Settings /> {t('configuration')}
         </h2>
         
         {/* Max Colors */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center group relative">
-            <label className="text-xs block flex items-center gap-1 cursor-help">
+          <div className="flex justify-between items-center">
+            <label className="text-xs block">
               {t('maxColors')}
-              <span className="text-gray-600 hover:text-gray-400 transition-colors"><Icons.Help /></span>
-              <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-48 p-2 bg-black/90 text-xs text-gray-300 rounded border border-gray-700 shadow-xl z-50 pointer-events-none">
-                {t('maxColorsHelp')}
-              </div>
             </label>
             <input 
               type="number" 
@@ -228,8 +281,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
       
       {/* History List */}
-      <div className="mt-4 border-t border-[#3e3e42] flex flex-col">
-        <div className="p-2 bg-[#2d2d30] border-b border-[#3e3e42] text-xs font-bold uppercase tracking-wider text-gray-500">
+      <div className="border-t border-[#3e3e42] flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="p-2 bg-[#2d2d30] border-b border-[#3e3e42] text-xs font-bold uppercase tracking-wider text-gray-500 shrink-0">
           {t('history')}
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -238,6 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div 
               key={item.id}
               onClick={() => onHistorySelect(item)}
+              onContextMenu={(e) => handleContextMenu(e, item)}
               className="group p-2 rounded cursor-pointer hover:bg-[#37373d] transition-colors border border-transparent hover:border-[#3e3e42] flex items-center gap-3"
             >
               <img src={item.originalImage} className="w-10 h-10 object-contain bg-black/20 rounded" alt="thumb" />
@@ -270,6 +324,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu.visible && contextMenu.item && (
+        <div 
+          className="fixed bg-[#2d2d30] border border-[#3e3e42] rounded-lg shadow-xl py-1 z-50 min-w-[200px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#37373d] flex items-center gap-2"
+            onClick={() => {
+              if (onReprocessOriginal && contextMenu.item) {
+                onReprocessOriginal(contextMenu.item);
+              }
+              closeContextMenu();
+            }}
+          >
+            <Icons.Image />
+            {t('reprocessOriginal')}
+          </button>
+          {contextMenu.item.results.length > 0 && (
+            <>
+              <div className="border-t border-[#3e3e42] my-1" />
+              <div className="px-3 py-1 text-[10px] text-gray-500 uppercase">{t('reprocessResult')}</div>
+              {contextMenu.item.results.map((_, idx) => (
+                <button
+                  key={idx}
+                  className="w-full px-3 py-1.5 text-left text-xs text-gray-300 hover:bg-[#37373d] flex items-center gap-2 pl-6"
+                  onClick={() => {
+                    if (onReprocessResult && contextMenu.item) {
+                      onReprocessResult(contextMenu.item, idx);
+                    }
+                    closeContextMenu();
+                  }}
+                >
+                  Sprite #{idx + 1}
+                </button>
+              ))}
+            </>
+          )}
+          <div className="border-t border-[#3e3e42] my-1" />
+          <button
+            className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-[#37373d] flex items-center gap-2"
+            onClick={() => {
+              if (contextMenu.item) {
+                onHistoryDelete(contextMenu.item.id);
+              }
+              closeContextMenu();
+            }}
+          >
+            <Icons.Trash />
+            {t('delete')}
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

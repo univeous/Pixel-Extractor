@@ -81,4 +81,9 @@ export default {
   offline: 'オフライン（キャッシュデータを使用）',
   updateAvailable: '更新が利用可能です',
   clickToRefresh: 'クリックでキャッシュをクリアして再読み込み',
+  
+  // Context menu
+  reprocessOriginal: '現在のパラメータで元画像を再処理',
+  reprocessResult: '現在のパラメータで結果を再処理',
+  delete: '削除',
 } as const;

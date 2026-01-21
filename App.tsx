@@ -113,13 +113,13 @@ const NetworkStatus: React.FC<{ t: (key: string) => string }> = ({ t }) => {
         onClick={handleRefresh}
         disabled={isRefreshing || !isOnline}
         className={`p-2 rounded-lg transition-colors ${
-          isRefreshing ? 'animate-spin text-blue-400' :
+          isRefreshing ? 'text-blue-400' :
           hasUpdate ? 'text-yellow-400 hover:bg-yellow-400/10 cursor-pointer' :
           isOnline ? 'text-green-400 hover:bg-green-400/10 cursor-pointer' : 'text-gray-500 cursor-default'
         }`}
         title={isOnline ? (hasUpdate ? t('updateAvailable') : t('online')) : t('offline')}
       >
-        {isRefreshing ? <Icons.Refresh /> :
+        {isRefreshing ? <span className="animate-spin inline-block"><Icons.Refresh /></span> :
          hasUpdate ? <Icons.Update /> :
          isOnline ? <Icons.Wifi /> : <Icons.WifiOff />}
       </button>
@@ -348,8 +348,47 @@ const App: React.FC = () => {
     if (selectedHistoryItem?.id === id) setSelectedHistoryItem(null);
   };
 
+  // Reprocess original image from history with current options
+  const handleReprocessOriginal = (item: HistoryItem) => {
+    if (status !== 'ready' && status !== 'error') return;
+    
+    // Convert data URL to File and process
+    fetch(item.originalImage)
+      .then(res => res.blob())
+      .then(blob => {
+        const file = new File([blob], 'reprocess.png', { type: 'image/png' });
+        triggerProcess(file);
+      });
+  };
+
+  // Reprocess a result sprite from history with current options
+  const handleReprocessResult = (item: HistoryItem, spriteIndex: number) => {
+    if (status !== 'ready' && status !== 'error') return;
+    
+    const sprite = item.results[spriteIndex];
+    if (!sprite) return;
+    
+    // Create a canvas to convert sprite data to image
+    const canvas = document.createElement('canvas');
+    canvas.width = sprite.width;
+    canvas.height = sprite.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const imageData = ctx.createImageData(sprite.width, sprite.height);
+    imageData.data.set(sprite.sprite_data);
+    ctx.putImageData(imageData, 0, 0);
+    
+    canvas.toBlob(blob => {
+      if (blob) {
+        const file = new File([blob], 'reprocess-sprite.png', { type: 'image/png' });
+        triggerProcess(file);
+      }
+    }, 'image/png');
+  };
+
   return (
-    <div className="flex flex-col min-h-screen w-full bg-[#1e1e1e] text-gray-300 font-sans selection:bg-blue-500/30">
+    <div className="flex flex-col h-screen w-full bg-[#1e1e1e] text-gray-300 font-sans selection:bg-blue-500/30 overflow-hidden">
       {status === 'init' && <GlobalLoader logs={logs} />}
 
       {/* Header */}
@@ -401,6 +440,8 @@ const App: React.FC = () => {
           history={history}
           onHistorySelect={setSelectedHistoryItem}
           onHistoryDelete={handleHistoryDelete}
+          onReprocessOriginal={handleReprocessOriginal}
+          onReprocessResult={handleReprocessResult}
           t={t}
         />
 
