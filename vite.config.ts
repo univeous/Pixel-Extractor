@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isProduction = mode === 'production';
     return {
+      // GitHub Pages 部署路径
+      base: isProduction ? '/Pixel-Extractor/' : '/',
       server: {
         port: 3000,
         host: '0.0.0.0',

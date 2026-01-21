@@ -1,13 +1,13 @@
-const CACHE_NAME = 'pixel-extractor-v2';
+const CACHE_NAME = 'pixel-extractor-v3';
 
-// 静态资源 - 本地文件
+// 静态资源 - 使用相对路径以支持子目录部署
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/worker.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './worker.js',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Pyodide CDN 资源 - 需要缓存的外部依赖

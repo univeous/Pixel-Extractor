@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#252526">
     <meta name="description" content="Extract pixel art sprites from images">
     <title>Pixel Extractor</title>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/svg+xml" href="/icon.svg">
-    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./icon.svg">
+    <link rel="apple-touch-icon" href="./icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for dark theme */
@@ -44,12 +44,14 @@
 </head>
 <body class="bg-[#1e1e1e] text-[#d4d4d4] overflow-hidden">
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+<script type="module" src="./index.tsx"></script>
 <script>
   // Register Service Worker for PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // Get the base path from current location
+      const basePath = new URL('./', window.location.href).pathname;
+      navigator.serviceWorker.register(basePath + 'sw.js', { scope: basePath })
         .then(reg => {
           console.log('[PWA] Service Worker registered:', reg.scope);
         })

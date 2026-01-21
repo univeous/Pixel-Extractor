@@ -223,7 +223,7 @@ const App: React.FC = () => {
 
   // Worker lifecycle
   useEffect(() => {
-    const worker = new Worker('worker.js');
+    const worker = new Worker(new URL('./worker.js', import.meta.url));
     workerRef.current = worker;
 
     worker.onmessage = (e) => {
