@@ -1,6 +1,6 @@
 # Pixel Extractor
 
-A web-based tool to extract pixel art sprites from AI-generated or upscaled images.
+A web-based tool to extract pixel art sprites from AI-generated or upscaled images, built on top of [Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor).
 
 <p align="center">
   <img src="docs/sc2.png" width="49%" />
@@ -18,11 +18,10 @@ A web-based tool to extract pixel art sprites from AI-generated or upscaled imag
 
 ## Features
 
-- Real-time parameter adjustment
-- Processing history with persistence (IndexedDB)
-- PWA support (installable, works offline after first load)
-- Multi-language support (EN / 中文 / 日本語)
-- Modern, polished UI with dark theme
+- **Polished UI** - Clean, modern dark theme with intuitive controls and real-time parameter adjustment
+- **PWA support** - Install it as an app, works offline after first load — almost like a native app! Check out the screenshots above ;)
+- **Processing history** - All your extractions are saved locally (IndexedDB) and persist across sessions
+- **Multi-language** - English / 中文 / 日本語
 
 ## Tech Stack
 
