@@ -1,5 +1,7 @@
 # <img src="public/icon.svg" width="28" height="28" style="vertical-align: middle"> Pixel Extractor
 
+**Languages:** [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)
+
 A web-based tool to extract clean pixel art sprites from AI-generated or poorly saved pixel art (e.g. JPEG artifacts), built on top of [Donitzo's ai-pixelart-extractor](https://github.com/Donitzo/ai-pixelart-extractor).
 
 **👉 [Try it online](https://univeous.github.io/Pixel-Extractor/)**
