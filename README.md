@@ -2,9 +2,10 @@
 
 A web-based tool to extract pixel art sprites from AI-generated or upscaled images.
 
-![Screenshot](docs/sc1.png)
-
-![Screenshot](docs/sc2.png)
+<p align="center">
+  <img src="docs/sc2.png" width="49%" />
+  <img src="docs/sc1.png" width="49%" />
+</p>
 
 ## Why This Tool?
 
