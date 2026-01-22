@@ -31,11 +31,14 @@ function optionsEqual(a: ProcessOptions, b: ProcessOptions): boolean {
     a.edge_detection_quantization_method === b.edge_detection_quantization_method;
 }
 
-// GitHub button with star count and version and version
+// GitHub button with version
 const GitHubButton: React.FC = () => {
   const [stars, setStars] = useState<number | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+  
+  // Set to true to show star count, false to hide it
+  const showStars = false;
   
   useEffect(() => {
     // Fetch star count from GitHub API
@@ -62,7 +65,7 @@ const GitHubButton: React.FC = () => {
         className="flex items-center gap-1.5 p-2 rounded-lg text-sm text-gray-400 hover:text-gray-300 hover:bg-[#3e3e42] transition-colors"
       >
         <Icons.GitHub />
-        {stars !== null && (
+        {showStars && stars !== null && (
           <>
             <span className="text-yellow-400">★</span>
             <span>{stars}</span>
