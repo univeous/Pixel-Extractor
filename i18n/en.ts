@@ -38,7 +38,7 @@ export default {
   // Upload
   uploadTitle: 'Drop Image Here',
   uploadSubtitle: 'or click to browse',
-  uploadFormats: 'PNG / JPG',
+  uploadFormats: 'PNG / JPG / WEBP / ...',
   
   // Details Modal
   details: 'Details',

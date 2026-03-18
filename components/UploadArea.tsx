@@ -12,7 +12,8 @@ interface UploadAreaProps {
 export const UploadArea: React.FC<UploadAreaProps> = ({ status, onFileSelect, t }) => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files[0]) onFileSelect(e.dataTransfer.files[0]);
+    const file = e.dataTransfer.files[0];
+    if (file?.type.startsWith('image/')) onFileSelect(file);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +31,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ status, onFileSelect, t 
         type="file" 
         id="file-upload" 
         className="hidden" 
-        accept="image/png,image/jpeg" 
+        accept="image/*"
         onChange={handleFileInput} 
       />
       <div className="p-6 bg-[#252526] rounded-full mb-6 text-blue-500 shadow-2xl transform hover:scale-110 transition-transform">

@@ -38,7 +38,7 @@ export default {
   // Upload
   uploadTitle: '拖放图片到这里',
   uploadSubtitle: '或点击选择文件',
-  uploadFormats: 'PNG / JPG',
+  uploadFormats: 'PNG / JPG / WEBP / ...',
   
   // Details Modal
   details: '详情',

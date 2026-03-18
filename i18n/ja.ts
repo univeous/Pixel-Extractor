@@ -38,7 +38,7 @@ export default {
   // Upload
   uploadTitle: 'ここに画像をドロップ',
   uploadSubtitle: 'またはクリックして選択',
-  uploadFormats: 'PNG / JPG',
+  uploadFormats: 'PNG / JPG / WEBP / ...',
   
   // Details Modal
   details: '詳細',
